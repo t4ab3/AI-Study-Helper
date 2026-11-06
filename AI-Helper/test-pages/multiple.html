@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>Multiple choice</title><link rel="stylesheet" href="style.css"><script src="common.js"></script></head>
+<body><main>
+<h1>Тест: несколько правильных ответов</h1>
+<form id="quiz">
+  <fieldset>
+    <legend>1. Какие из чисел простые?</legend>
+    <label><input type="checkbox" name="q1[]" value="2"> 2</label>
+    <label><input type="checkbox" name="q1[]" value="4"> 4</label>
+    <label><input type="checkbox" name="q1[]" value="7"> 7</label>
+    <label><input type="checkbox" name="q1[]" value="9"> 9</label>
+    <label><input type="checkbox" name="q1[]" value="11"> 11</label>
+  </fieldset>
+  <div class="question">
+    <p class="q-text">2. Выберите языки программирования:</p>
+    <label><input type="checkbox" name="q2_choice0" checked> Python</label>
+    <label><input type="checkbox" name="q2_choice1"> HTML</label>
+    <label><input type="checkbox" name="q2_choice2"> Java</label>
+    <label><input type="checkbox" name="q2_choice3" checked> JPEG</label>
+  </div>
+  <div class="nav"><button type="button" class="finish">Отправить ответы</button></div>
+</form>
+<div id="state"></div>
+</main></body>
+</html>

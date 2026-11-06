@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>Dropdown</title><link rel="stylesheet" href="style.css"><script src="common.js"></script></head>
+<body><main>
+<h1>Тест: выпадающие списки и сопоставление</h1>
+<form id="quiz">
+  <div class="question">
+    <p class="q-text">1. В каком году началась Вторая мировая война?</p>
+    <select name="q1">
+      <option value="">Выберите...</option>
+      <option value="1914">1914</option>
+      <option value="1939">1939</option>
+      <option value="1941">1941</option>
+    </select>
+  </div>
+  <div class="question">
+    <label for="planet">2. Самая большая планета Солнечной системы:</label>
+    <select id="planet" name="q2">
+      <option value="" disabled selected>—</option>
+      <option value="earth">Земля</option>
+      <option value="jupiter">Юпитер</option>
+      <option value="saturn">Сатурн</option>
+    </select>
+  </div>
+  <div class="question">
+    <p class="q-text">3. Сопоставьте страны и их столицы.</p>
+    <table class="match"><tbody>
+      <tr><td>Япония</td><td><select name="q3_sub0"><option value="0">Выберите...</option><option value="1">Токио</option><option value="2">Оттава</option><option value="3">Канберра</option></select></td></tr>
+      <tr><td>Канада</td><td><select name="q3_sub1"><option value="0">Выберите...</option><option value="1">Токио</option><option value="2">Оттава</option><option value="3">Канберра</option></select></td></tr>
+      <tr><td>Австралия</td><td><select name="q3_sub2"><option value="0">Выберите...</option><option value="1">Токио</option><option value="2">Оттава</option><option value="3">Канберра</option></select></td></tr>
+    </tbody></table>
+  </div>
+  <div class="nav"><button type="button" class="finish">Завершить</button></div>
+</form>
+<div id="state"></div>
+</main></body>
+</html>

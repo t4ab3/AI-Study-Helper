@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>Progressive reveal test</title><link rel="stylesheet" href="style.css"><script src="common.js"></script>
+<style>.question[hidden] { display: none; }</style>
+</head>
+<body><main>
+<h1>Тест: следующий вопрос появляется после ответа</h1>
+<form id="quiz" onsubmit="return false">
+  <div class="question" data-q="1">
+    <p class="q-text">1. Какой язык используется для стилей веб-страниц?</p>
+    <label><input type="radio" name="r1" value="js"> JavaScript</label>
+    <label><input type="radio" name="r1" value="css"> CSS</label>
+    <label><input type="radio" name="r1" value="sql"> SQL</label>
+  </div>
+  <div class="question" data-q="2" hidden>
+    <p class="q-text">2. Отметьте браузеры.</p>
+    <label><input type="checkbox" name="r2_choice0"> Chrome</label>
+    <label><input type="checkbox" name="r2_choice1"> Photoshop</label>
+    <label><input type="checkbox" name="r2_choice2"> Firefox</label>
+  </div>
+  <div class="question" data-q="3" hidden>
+    <p class="q-text">3. HTTP работает поверх TCP.</p>
+    <label><input type="radio" name="r3" value="t"> Верно</label>
+    <label><input type="radio" name="r3" value="f"> Неверно</label>
+  </div>
+  <div class="nav"><button type="button" class="finish">Отправить все ответы</button></div>
+</form>
+<div id="state"></div>
+<script>
+  // No "Next" button: answering a question reveals the next one below it.
+  const qs = Array.from(document.querySelectorAll('.question'));
+  document.addEventListener('change', (e) => {
+    const card = e.target.closest('.question');
+    const i = qs.indexOf(card);
+    if (i >= 0 && i + 1 < qs.length && qs[i + 1].hidden) setTimeout(() => (qs[i + 1].hidden = false), 500);
+  });
+</script>
+</main></body>
+</html>

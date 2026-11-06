@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>Custom widgets (ARIA)</title><link rel="stylesheet" href="style.css"><script src="common.js"></script></head>
+<body><main>
+<h1>Тест на кастомных элементах (как в онлайн-формах)</h1>
+<div class="question">
+  <p class="q-text" id="g1-title">1. Какой океан самый большой?</p>
+  <div role="radiogroup" aria-labelledby="g1-title">
+    <div class="custom-radio" role="radio" aria-checked="false" tabindex="0" id="g1-a">Атлантический</div>
+    <div class="custom-radio" role="radio" aria-checked="false" tabindex="0" id="g1-b">Тихий</div>
+    <div class="custom-radio" role="radio" aria-checked="false" tabindex="0" id="g1-c">Индийский</div>
+  </div>
+</div>
+<div class="question">
+  <p class="q-text" id="g2-title">2. Отметьте млекопитающих:</p>
+  <div role="group" aria-labelledby="g2-title">
+    <div class="custom-check" role="checkbox" aria-checked="false" tabindex="0" id="g2-a">Дельфин</div>
+    <div class="custom-check" role="checkbox" aria-checked="false" tabindex="0" id="g2-b">Акула</div>
+    <div class="custom-check" role="checkbox" aria-checked="false" tabindex="0" id="g2-c">Летучая мышь</div>
+  </div>
+</div>
+<div class="nav"><button type="button" class="finish">Отправить</button></div>
+<div id="state"></div>
+<script>
+  // Behaves like typical custom form libraries: state lives in aria-checked.
+  document.querySelectorAll('[role=radio]').forEach((el) =>
+    el.addEventListener('click', () => {
+      el.closest('[role=radiogroup]').querySelectorAll('[role=radio]').forEach((r) => r.setAttribute('aria-checked', 'false'));
+      el.setAttribute('aria-checked', 'true');
+      window.__events++;
+      renderState();
+    }),
+  );
+  document.querySelectorAll('[role=checkbox]').forEach((el) =>
+    el.addEventListener('click', () => {
+      el.setAttribute('aria-checked', el.getAttribute('aria-checked') === 'true' ? 'false' : 'true');
+      window.__events++;
+      renderState();
+    }),
+  );
+</script>
+</main></body>
+</html>

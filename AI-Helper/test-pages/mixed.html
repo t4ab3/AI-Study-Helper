@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>Mixed test, page 1</title><link rel="stylesheet" href="style.css"><script src="common.js"></script></head>
+<body><main>
+<h1>Итоговый тест · страница 1 из 2</h1>
+<form id="quiz" action="mixed-page2.html" method="get">
+  <div class="question">
+    <p class="q-text">1. Какой язык используется для стилей веб-страниц?</p>
+    <label><input type="radio" name="m1" value="js"> JavaScript</label>
+    <label><input type="radio" name="m1" value="css"> CSS</label>
+    <label><input type="radio" name="m1" value="sql"> SQL</label>
+  </div>
+  <div class="question">
+    <p class="q-text">2. Какие из перечисленных являются браузерами?</p>
+    <label><input type="checkbox" name="m2_choice0"> Chrome</label>
+    <label><input type="checkbox" name="m2_choice1"> Firefox</label>
+    <label><input type="checkbox" name="m2_choice2"> Photoshop</label>
+  </div>
+  <div class="question">
+    <p class="q-text">3. HTTP работает поверх TCP.</p>
+    <label><input type="radio" name="m3" value="t"> Верно</label>
+    <label><input type="radio" name="m3" value="f"> Неверно</label>
+  </div>
+  <div class="question">
+    <p class="q-text">4. Порт HTTPS по умолчанию:</p>
+    <select name="m4"><option value="">Выберите...</option><option value="80">80</option><option value="443">443</option><option value="8080">8080</option></select>
+  </div>
+  <div class="question">
+    <label for="m5">5. Как расшифровывается аббревиатура HTML? (по-английски)</label><br>
+    <input type="text" id="m5" name="m5" size="50">
+  </div>
+  <div class="nav">
+    <input type="submit" value="Следующая страница">
+    <button type="button" class="finish">Завершить тест</button>
+  </div>
+</form>
+<div id="state"></div>
+</main></body>
+</html>

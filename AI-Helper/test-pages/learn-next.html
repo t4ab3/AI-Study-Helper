@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>Unusual layout: question apart from options, "Next" is a div</title><link rel="stylesheet" href="style.css"><script src="common.js"></script>
+<style>
+  .layout { display: flex; gap: 24px; align-items: flex-start; }
+  .qcol { flex: 1; font: 16px system-ui, sans-serif; }
+  .acol { flex: 1; }
+  .card { display: none; }
+  .card.active { display: block; }
+  .card label { display: block; margin: 4px 0; }
+  .top { font: 13px system-ui, sans-serif; color: #777; margin-bottom: 8px; }
+  /* not a <button> and no "Далее" text: the extension cannot recognise it by itself */
+  .go { display: inline-block; margin-top: 14px; padding: 8px 16px; border-radius: 8px; background: #2d6cdf; color: #fff;
+        font: 14px system-ui, sans-serif; cursor: pointer; user-select: none; }
+  .go.hidden { display: none; }
+  .flag { font-size: 12px; color: #777; margin-top: 10px; display: block; }
+</style>
+</head>
+<body><main>
+<h1>Тест с необычной разметкой</h1>
+<div class="top">Вопрос <span id="num">1</span> из 3 · осталось <span class="timer">09:58</span></div>
+<div class="layout">
+  <div class="qcol"><div class="qbox"><div id="qtext"></div></div></div>
+  <div class="acol">
+    <div class="card" data-q="1">
+      <label><input type="radio" name="l1" value="a"> Берлин</label>
+      <label><input type="radio" name="l1" value="b"> Париж</label>
+      <label><input type="radio" name="l1" value="c"> Мадрид</label>
+    </div>
+    <div class="card" data-q="2">
+      <label for="l2">Ответ:</label>
+      <input type="text" id="l2" name="l2" size="30">
+    </div>
+    <div class="card" data-q="3">
+      <label><input type="checkbox" name="l3_0"> 2</label>
+      <label><input type="checkbox" name="l3_1"> 4</label>
+      <label><input type="checkbox" name="l3_2"> 7</label>
+      <label><input type="checkbox" name="l3_3"> 9</label>
+    </div>
+    <label class="flag"><input type="checkbox" name="flag"> Отметить вопрос</label>
+    <div class="go" id="go-wrap"><span>Перейти</span></div>
+    <button type="button" class="finish" style="display:none">Завершить тест</button>
+  </div>
+</div>
+<div id="state"></div>
+<script>
+  // The question text is rendered into one shared block, away from the options.
+  const TEXTS = ['Столица Франции?', 'Столица Италии?', 'Какие из чисел простые?'];
+  const cards = Array.from(document.querySelectorAll('.card'));
+  const go = document.getElementById('go-wrap');
+  const finish = document.querySelector('.finish');
+  let current = 0;
+  window.__goClicks = 0;
+  function show(i) {
+    cards.forEach((c, k) => c.classList.toggle('active', k === i));
+    document.getElementById('qtext').textContent = TEXTS[i];
+    document.getElementById('num').textContent = i + 1;
+    const last = i === cards.length - 1;
+    go.classList.toggle('hidden', last);
+    finish.style.display = last ? '' : 'none';
+  }
+  // the site reacts to mousedown/click on the div, like many SPA frameworks
+  go.addEventListener('click', () => {
+    if (current >= cards.length - 1) return;
+    window.__goClicks++;
+    current++;
+    document.getElementById('qtext').textContent = '';
+    cards.forEach((c) => c.classList.remove('active'));
+    setTimeout(() => show(current), 500); // "loading"
+  });
+  show(0);
+</script>
+</main></body>
+</html>

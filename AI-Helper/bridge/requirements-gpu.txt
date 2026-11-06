@@ -1,0 +1,3 @@
+# NVIDIA GPU for speech recognition (installed by start_bridge.bat when nvidia-smi is present)
+nvidia-cublas-cu12
+nvidia-cudnn-cu12>=9,<10

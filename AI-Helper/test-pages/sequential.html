@@ -1,0 +1,102 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>Sequential test (one question at a time)</title><link rel="stylesheet" href="style.css"><script src="common.js"></script>
+<style>
+  .card { display: none; }
+  .card.active { display: block; }
+  #loading { display: none; font: 14px system-ui, sans-serif; color: #777; margin: 16px 0; }
+  .progress-line { font: 13px system-ui, sans-serif; color: #777; }
+  #next:disabled { opacity: .5; cursor: not-allowed; }
+</style>
+</head>
+<body><main>
+<h1>Онлайн-тест</h1>
+<p class="progress-line">Вопрос <span id="num">1</span> из <span id="total">7</span></p>
+<form id="quiz" onsubmit="return false">
+  <div class="question card" data-q="1">
+    <p class="q-text">Столица Франции?</p>
+    <label><input type="radio" name="s1" value="a"> Берлин</label>
+    <label><input type="radio" name="s1" value="b"> Париж</label>
+    <label><input type="radio" name="s1" value="c"> Мадрид</label>
+  </div>
+  <div class="question card" data-q="2">
+    <p class="q-text">Какие из чисел простые?</p>
+    <label><input type="checkbox" name="s2_choice0"> 2</label>
+    <label><input type="checkbox" name="s2_choice1"> 4</label>
+    <label><input type="checkbox" name="s2_choice2"> 7</label>
+    <label><input type="checkbox" name="s2_choice3"> 9</label>
+  </div>
+  <div class="question card" data-q="3">
+    <p class="q-text">Вода кипит при 100 °C при нормальном давлении.</p>
+    <label><input type="radio" name="s3" value="t"> Верно</label>
+    <label><input type="radio" name="s3" value="f"> Неверно</label>
+  </div>
+  <div class="question card" data-q="4">
+    <p class="q-text">Какой порт использует HTTPS по умолчанию?</p>
+    <select name="s4"><option value="">Выберите...</option><option value="80">80</option><option value="443">443</option><option value="8080">8080</option></select>
+  </div>
+  <div class="question card" data-q="5">
+    <label for="s5">Как называется самая длинная река в мире?</label><br>
+    <input type="text" id="s5" name="s5" size="40">
+  </div>
+  <div class="question card" data-q="6">
+    <p class="q-text">Сопоставьте страны и их столицы.</p>
+    <table class="match"><tbody>
+      <tr><td>Япония</td><td><select name="s6_sub0"><option value="0">Выберите...</option><option value="1">Токио</option><option value="2">Оттава</option><option value="3">Канберра</option></select></td></tr>
+      <tr><td>Канада</td><td><select name="s6_sub1"><option value="0">Выберите...</option><option value="1">Токио</option><option value="2">Оттава</option><option value="3">Канберра</option></select></td></tr>
+      <tr><td>Австралия</td><td><select name="s6_sub2"><option value="0">Выберите...</option><option value="1">Токио</option><option value="2">Оттава</option><option value="3">Канберра</option></select></td></tr>
+    </tbody></table>
+  </div>
+  <div class="question card" data-q="7">
+    <p class="q-text">Сколько бит в одном байте?</p>
+    <label><input type="radio" name="s7" value="4"> 4</label>
+    <label><input type="radio" name="s7" value="8"> 8</label>
+    <label><input type="radio" name="s7" value="16"> 16</label>
+  </div>
+  <div id="loading">Загрузка следующего вопроса…</div>
+  <div class="nav">
+    <button type="button" id="next" disabled>Далее</button>
+    <button type="button" class="finish" id="finish" style="display:none">Завершить тест</button>
+  </div>
+</form>
+<div id="state"></div>
+<script>
+  // Only the current question is in the visible DOM; the next one appears after "Далее",
+  // with a loading delay, like many online test systems.
+  const cards = Array.from(document.querySelectorAll('.card'));
+  let current = 0;
+  const next = document.getElementById('next');
+  function answered(card) {
+    return Array.from(card.querySelectorAll('input, select')).every((el) => {
+      if (el.type === 'radio') return !!card.querySelector(`input[name="${el.name}"]:checked`);
+      if (el.type === 'checkbox') return !!card.querySelector('input[type=checkbox]:checked');
+      if (el.tagName === 'SELECT') return el.value !== '' && el.value !== '0';
+      return el.value.trim() !== '';
+    });
+  }
+  function show(i) {
+    cards.forEach((c, k) => c.classList.toggle('active', k === i));
+    document.getElementById('num').textContent = i + 1;
+    const last = i === cards.length - 1;
+    next.style.display = last ? 'none' : '';
+    document.getElementById('finish').style.display = last ? '' : 'none';
+    next.disabled = !answered(cards[i]);
+  }
+  document.addEventListener('change', () => (next.disabled = !answered(cards[current])));
+  document.addEventListener('input', () => (next.disabled = !answered(cards[current])));
+  next.addEventListener('click', () => {
+    if (!answered(cards[current])) return;
+    cards[current].classList.remove('active');
+    next.disabled = true;
+    document.getElementById('loading').style.display = 'block';
+    setTimeout(() => {
+      document.getElementById('loading').style.display = 'none';
+      current++;
+      show(current);
+    }, 400 + Math.random() * 500);
+  });
+  document.getElementById('total').textContent = cards.length;
+  show(0);
+</script>
+</main></body>
+</html>

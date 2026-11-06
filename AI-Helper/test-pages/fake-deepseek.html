@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<title>Fake DeepSeek (test double)</title>
+<style>
+  body { margin: 0; font: 15px system-ui, sans-serif; background: #fff; color: #222; }
+  .banner { background: #fff3cd; padding: 6px 12px; font-size: 13px; }
+  #log { max-width: 760px; margin: 0 auto; padding: 16px 16px 140px; }
+  .user { background: #eef2ff; border-radius: 12px; padding: 10px 14px; margin: 12px 0 12px 80px; white-space: pre-wrap; font-size: 12px; max-height: 120px; overflow: auto; }
+  .ds-markdown { padding: 8px 0; white-space: pre-wrap; font-family: ui-monospace, Consolas, monospace; font-size: 13px; }
+  .composer { position: fixed; bottom: 0; left: 0; right: 0; background: #fff; border-top: 1px solid #ddd; padding: 12px; display: flex; gap: 8px; justify-content: center; }
+  #chat-input { width: 600px; height: 70px; }
+  .login { max-width: 320px; margin: 80px auto; display: grid; gap: 8px; }
+</style>
+</head>
+<body>
+<div class="banner">Тестовая подделка интерфейса DeepSeek для автотестов AI Helper. Не настоящий чат.</div>
+<div id="app"></div>
+<script>
+/*
+  Emulates the parts of chat.deepseek.com that the bridge relies on:
+  a textarea that sends on Enter, assistant replies rendered in .ds-markdown and streamed
+  over time, and a Stop button while a reply is being generated.
+  Query params: ?login=1 (show a login form), ?flaky=1 (first reply is not JSON),
+  ?unknown=1 (answer with an option id that does not exist),
+  ?keep=N (like a long DeepSeek chat: only the last N messages stay on the page).
+*/
+const params = new URLSearchParams(location.search);
+const app = document.getElementById('app');
+
+const CORRECT = new Set(['париж', 'кислород', '2', '7', '11', 'python', 'java', 'css', 'chrome', 'firefox', '1939', 'юпитер', '443', '8', 'git checkout -b', 'тихий', 'дельфин', 'летучая мышь']);
+const TF = [['вода кипит', 'верно'], ['tcp', 'верно'], ['sun is a planet', 'false'], ['луна — звезда', 'неверно']];
+const TEXT = [['длинная река', 'Нил'], ['144', '12'], ['html', 'HyperText Markup Language'], ['фотосинтез', 'Образование органических веществ из CO2 и воды на свету'], ['столица италии', 'Рим']];
+const MATCH = { 'япония': 'токио', 'канада': 'оттава', 'австралия': 'канберра' };
+
+function parseQuestions(prompt) {
+  const blocks = prompt.split(/\n(?=\[q\d+\])/).filter((b) => /^\[q\d+\]/.test(b));
+  return blocks.map((b) => {
+    const id = b.match(/^\[(q\d+)\]/)[1];
+    const type = b.match(/^\[q\d+\] \(([^)]*)\)/)[1];
+    const text = (b.match(/Вопрос: (.*)/) || [, ''])[1].toLowerCase();
+    const options = [...b.matchAll(/^\s+(option_\d+): (.*)$/gm)].map((m) => ({ id: m[1], text: m[2].trim().toLowerCase() }));
+    const items = [...b.matchAll(/^\s+(q\d+_item_\d+): (.*)$/gm)].map((m) => ({ id: m[1], text: m[2].trim().toLowerCase() }));
+    return { id, type, text, options, items };
+  });
+}
+
+function solve(q) {
+  if (params.get('unknown') === '1') return { question_id: q.id, answers: ['option_99'], confidence: 0.9 };
+  if (q.type.startsWith('ввод текста')) {
+    const hit = TEXT.find(([k]) => q.text.includes(k));
+    return { question_id: q.id, answers: [], text_answer: hit ? hit[1] : '', confidence: hit ? 0.93 : 0 };
+  }
+  if (q.type.startsWith('сопоставление')) {
+    const matches = q.items.map((it) => ({ item_id: it.id, option_id: (q.options.find((o) => o.text === MATCH[it.text]) || {}).id })).filter((m) => m.option_id);
+    return { question_id: q.id, answers: [], matches, confidence: 0.9 };
+  }
+  if (q.type.startsWith('верно')) {
+    const hit = TF.find(([k]) => q.text.includes(k));
+    const opt = hit && q.options.find((o) => o.text === hit[1]);
+    return { question_id: q.id, answers: opt ? [opt.id] : [], confidence: 0.92 };
+  }
+  const chosen = q.options.filter((o) => CORRECT.has(o.text)).map((o) => o.id);
+  const single = !q.type.startsWith('может быть несколько');
+  return { question_id: q.id, answers: single ? chosen.slice(0, 1) : chosen, confidence: chosen.length ? 0.95 : 0 };
+}
+
+function reply(prompt) {
+  const n = Number(sessionStorage.getItem('replies') || 0);
+  sessionStorage.setItem('replies', String(n + 1));
+  if (params.get('flaky') === '1' && n === 0) return 'Извините, я не уверен. Давайте разберём каждый вопрос по шагам...';
+  if (/(Розшифровка|Расшифровка|Transcript):/.test(prompt)) {
+    // lecture notes: Markdown, and a word from the transcript to prove it was sent
+    const words = (prompt.split('"""')[1] || '').trim().split(/\s+/).slice(0, 4).join(' ');
+    return `# Конспект лекції\n\n**Початок розшифровки:** ${words}\n\n## Основне\n\n- **Термін** — означення\n- другий пункт\n\n1. Перший крок\n2. Другий крок\n\nВисновки: все зрозуміло.`;
+  }
+  const qs = parseQuestions(prompt);
+  if (!qs.length) return 'Понял. Отвечаю строго в JSON.\n```json\n{"answers": []}\n```';
+  const body = JSON.stringify({ answers: qs.map(solve) }, null, 2);
+  return 'Вот ответ:\n```json\n' + body + '\n```';
+}
+
+function stream(el, text, done) {
+  let i = 0;
+  const step = () => {
+    i = Math.min(text.length, i + 24);
+    el.textContent = text.slice(0, i);
+    if (i < text.length) setTimeout(step, 40 + Math.random() * 40);
+    else setTimeout(done, 150);
+  };
+  setTimeout(step, 600); // "thinking" before the first token
+}
+
+function renderChat() {
+  app.innerHTML = '<div id="log"></div><div class="composer"><textarea id="chat-input" placeholder="Message DeepSeek"></textarea><div id="send" role="button" aria-label="Send" style="padding:8px 14px;border:1px solid #888;border-radius:8px;cursor:pointer">Send</div></div>';
+  const input = document.getElementById('chat-input');
+  const log = document.getElementById('log');
+  const send = () => {
+    const text = input.value;
+    if (!text.trim() || document.querySelector('[aria-label="Stop"]')) return;
+    input.value = '';
+    const u = document.createElement('div');
+    u.className = 'user';
+    u.textContent = text;
+    log.appendChild(u);
+    const a = document.createElement('div');
+    a.className = 'ds-markdown';
+    log.appendChild(a);
+    const keep = Number(params.get('keep') || 0);
+    if (keep) while (log.children.length > keep) log.firstElementChild.remove();
+    const stop = document.createElement('div');
+    stop.setAttribute('role', 'button');
+    stop.setAttribute('aria-label', 'Stop');
+    stop.textContent = '■';
+    document.querySelector('.composer').appendChild(stop);
+    stream(a, reply(text), () => stop.remove());
+  };
+  input.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      send();
+    }
+  });
+  document.getElementById('send').addEventListener('click', send);
+}
+
+if (params.get('login') === '1' && !localStorage.getItem('fakeLoggedIn')) {
+  app.innerHTML = '<form class="login" onsubmit="localStorage.setItem(\'fakeLoggedIn\',\'1\');location.reload();return false"><b>Вход</b><input type="email" placeholder="email"><input type="password" placeholder="пароль"><button>Войти</button></form>';
+} else {
+  renderChat();
+}
+</script>
+</body>
+</html>

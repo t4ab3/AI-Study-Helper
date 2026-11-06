@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>Text input</title><link rel="stylesheet" href="style.css"><script src="common.js"></script></head>
+<body><main>
+<h1>Тест: ввод ответа</h1>
+<form id="quiz" onsubmit="return false">
+  <div class="question">
+    <label for="a1">1. Как называется самая длинная река в мире?</label><br>
+    <input type="text" id="a1" name="answer1" size="40">
+  </div>
+  <div class="question">
+    <p class="q-text">2. Чему равен квадратный корень из 144?</p>
+    <label>Ответ: <input type="number" name="answer2"></label>
+  </div>
+  <div class="question">
+    <p class="q-text">3. Кратко объясните, что такое фотосинтез.</p>
+    <textarea name="answer3" rows="4" cols="60"></textarea>
+  </div>
+  <div class="nav"><button type="submit" class="finish">Отправить</button></div>
+</form>
+<div id="state"></div>
+</main></body>
+</html>

@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>Single choice</title><link rel="stylesheet" href="style.css"><script src="common.js"></script></head>
+<body><main>
+<h1>Тест: один правильный ответ</h1>
+<form id="quiz">
+  <div class="question">
+    <p class="q-text">1. Столица Франции?</p>
+    <label><input type="radio" name="q1" value="a"> Берлин</label>
+    <label><input type="radio" name="q1" value="b"> Париж</label>
+    <label><input type="radio" name="q1" value="c"> Мадрид</label>
+    <label><input type="radio" name="q1" value="d"> Рим</label>
+  </div>
+  <div class="question">
+    <p class="q-text">2. Сколько будет 7 × 8?</p>
+    <input type="radio" id="q2a" name="q2" value="54"><label for="q2a">54</label><br>
+    <input type="radio" id="q2b" name="q2" value="56"><label for="q2b">56</label><br>
+    <input type="radio" id="q2c" name="q2" value="64"><label for="q2c">64</label>
+  </div>
+  <!-- Moodle-like markup -->
+  <div class="que multichoice">
+    <div class="info"><h3 class="no">Вопрос 3</h3><div class="state">Пока нет ответа</div></div>
+    <div class="content"><div class="formulation">
+      <div class="qtext"><p>Какой химический элемент обозначается символом O?</p></div>
+      <div class="ablock">
+        <div class="prompt">Выберите один ответ:</div>
+        <div class="answer">
+          <div class="r0"><input type="radio" name="q77:3_answer" value="0" id="q77:3_answer0"><div class="d-flex"><label for="q77:3_answer0">a. Золото</label></div></div>
+          <div class="r1"><input type="radio" name="q77:3_answer" value="1" id="q77:3_answer1"><div class="d-flex"><label for="q77:3_answer1">b. Кислород</label></div></div>
+          <div class="r0"><input type="radio" name="q77:3_answer" value="2" id="q77:3_answer2"><div class="d-flex"><label for="q77:3_answer2">c. Осмий</label></div></div>
+        </div>
+      </div>
+    </div></div>
+  </div>
+  <div class="nav"><button type="button" class="finish">Завершить тест</button></div>
+</form>
+<div id="state"></div>
+</main></body>
+</html>

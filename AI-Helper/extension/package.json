@@ -1,0 +1,29 @@
+{
+  "name": "ai-helper",
+  "version": "2.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc --noEmit && vite build && vite build -c vite.content.config.ts && node scripts/check-dist.mjs",
+    "dev": "vite build --watch",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "e2e:auto": "node tests/e2e/run-e2e-auto.mjs"
+  },
+  "dependencies": {
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1"
+  },
+  "devDependencies": {
+    "@types/chrome": "^0.0.287",
+    "@types/node": "^22.20.5",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "@vitejs/plugin-react": "^4.3.4",
+    "jsdom": "^25.0.1",
+    "playwright-core": "^1.58.0",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.7",
+    "vitest": "^2.1.8"
+  }
+}
