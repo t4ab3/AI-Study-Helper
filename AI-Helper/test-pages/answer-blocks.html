@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="ru">
+<head><meta charset="utf-8"><title>Answer blocks</title><link rel="stylesheet" href="style.css"><script src="common.js"></script>
+<style>
+  .mdc-radio { display: inline-block; position: relative; width: 20px; height: 20px; }
+  .mdc-radio__native-control { position: absolute; inset: 0; opacity: 0; margin: 0; }
+  .mdc-radio__background { width: 16px; height: 16px; border: 2px solid #555; border-radius: 50%; }
+  .answer_container { display: flex; gap: 8px; align-items: center; margin: 6px 0; }
+</style></head>
+<body><main>
+<!-- Testportal-like markup: the radio sits in its own wrapper, the answer text in a neighbouring block -->
+<div class="question_header_content"><div class="question_essence"><p>What is the current officially recognized elevation of Mount Everest?</p></div></div>
+<form id="quiz">
+  <div class="question_answers">
+    <div class="answer_container">
+      <div class="answer_input"><div class="mdc-radio"><input class="mdc-radio__native-control" type="radio" name="givenAnswer" value="1"><div class="mdc-radio__background"></div></div></div>
+      <div class="answer_body"><p>8 611 m</p></div>
+    </div>
+    <div class="answer_container">
+      <div class="answer_input"><div class="mdc-radio"><input class="mdc-radio__native-control" type="radio" name="givenAnswer" value="2"><div class="mdc-radio__background"></div></div></div>
+      <div class="answer_body"><p>8 848.86 m</p></div>
+    </div>
+    <div class="answer_container">
+      <div class="answer_input"><div class="mdc-radio"><input class="mdc-radio__native-control" type="radio" name="givenAnswer" value="3"><div class="mdc-radio__background"></div></div></div>
+      <div class="answer_body"><p>8 516 m</p></div>
+    </div>
+  </div>
+  <button type="button" id="submit-answer">Submit Answer</button>
+</form>
+<div id="state"></div>
+</main></body>
+</html>

@@ -231,6 +231,34 @@ class Lecture:
             out.append(Segment(float(sec), float(sec), text))
         self.segments = out
 
+    def recover_lengths(self) -> None:
+        """After the bridge was closed mid-recording: lengths from the files, and a valid audio.wav.
+
+        meta.json is not rewritten for every piece of audio, so its lengths can be far behind, and
+        audio.wav is left with a header that says it is empty.
+        """
+        if self.segments:
+            self.transcribed_s = max(self.transcribed_s, self.segments[-1].start)
+        wav = self.folder / "audio.wav"
+        try:
+            size = wav.stat().st_size
+        except OSError:
+            return
+        if size <= 44:
+            return
+        data = (size - 44) // 2 * 2
+        self.recorded_s = max(self.recorded_s, data / 2 / SAMPLE_RATE)
+        try:
+            with open(wav, "r+b") as f:
+                head = f.read(44)
+                if head[:4] == b"RIFF" and head[36:40] == b"data":
+                    f.seek(4)
+                    f.write((36 + data).to_bytes(4, "little"))
+                    f.seek(40)
+                    f.write(data.to_bytes(4, "little"))
+        except OSError:
+            log.exception("audio.wav header repair failed")
+
     def text(self) -> str:
         """Transcript for DeepSeek: plain text, a line break at longer pauses."""
         out, prev_end = [], None
@@ -469,8 +497,14 @@ class LectureStore:
             if lec.state in ("recording", "transcribing", "summarizing"):
                 # the bridge was closed in the middle: keep what was transcribed
                 lec.load_segments()
+                lec.recover_lengths()
                 lec.state = "transcribed" if lec.segments else "error"
                 lec.message = "Bridge был закрыт во время работы. Сохранено то, что успело распознаться."
+                lec.save_meta()
+            elif lec.source == "record" and lec.recorded_s < 1 and (lec.folder / "audio.wav").is_file():
+                # recovered by an older version, which left the lengths at zero
+                lec.load_segments()
+                lec.recover_lengths()
                 lec.save_meta()
             self._lectures[lec.id] = lec
 

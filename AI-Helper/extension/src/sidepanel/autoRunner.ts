@@ -7,6 +7,7 @@ import type {
   ValidationReport,
 } from '../shared/types';
 import { parseAnswerText, validateAnswers } from '../shared/answers';
+import { log as logEntry } from '../shared/logger';
 import { buildAutoPrompt, buildCorrectionPrompt } from '../shared/prompt';
 import { buildFillPlan } from '../shared/plan';
 import { fingerprint, renumber } from '../shared/fingerprint';
@@ -392,6 +393,12 @@ export class AutoRunner {
 
   /** Asks until the reply is valid for every question; never guesses. */
   private async solve(questions: Question[]): Promise<ValidationReport> {
+    // options without text: DeepSeek could only guess, and guessing is not allowed
+    const blind = questions.find((q) => q.options.length > 0 && q.options.every((o) => !o.text.trim()));
+    if (blind)
+      throw new Fatal(
+        `Не удалось прочитать тексты вариантов ответа (${short(blind.text)}). Возможно, варианты — картинки. Вариант не выбран.`,
+      );
     let prompt = buildAutoPrompt(questions);
     let newChat = this.s.asks === 0 || this.s.asks % TIMING.newChatEvery === 0;
     let invalid = 0;
@@ -445,6 +452,10 @@ export class AutoRunner {
         }
         problems = bad.flatMap((r) => r.messages.map((m) => `${r.questionId}: ${m}`));
       }
+      // what DeepSeek said and what it was choosing from, for the log
+      logEntry('info', 'auto', `ответ DeepSeek не подошёл: ${text.slice(0, 300)}`, {
+        options: questions.map((q) => ({ id: q.id, type: q.type, options: q.options.map((o) => `${o.id}: ${o.text.slice(0, 60)}`) })),
+      });
       if (++invalid >= TIMING.maxAskAttempts) {
         questions.forEach((q) => this.set({ failed: [...this.s.failed, { text: short(q.text), reason: problems[0] }] }));
         throw new Fatal(

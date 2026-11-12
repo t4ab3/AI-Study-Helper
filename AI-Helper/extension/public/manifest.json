@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "AI Helper",
-  "version": "2.1.0",
+  "version": "2.2.1",
   "description": "Решает тесты на странице и делает конспекты лекций через веб-версию DeepSeek.",
   "minimum_chrome_version": "116",
   "action": {

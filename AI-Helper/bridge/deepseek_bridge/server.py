@@ -31,6 +31,8 @@ from __future__ import annotations
 import json
 import logging
 import mimetypes
+import socket
+import sys
 from http import HTTPStatus
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -80,8 +82,12 @@ class BridgeHandler(BaseHTTPRequestHandler):
         self.send_header("Content-Type", "application/json; charset=utf-8")
         self.send_header("Content-Length", str(len(data)))
         self.send_header("Cache-Control", "no-store")
-        self.end_headers()
-        self.wfile.write(data)
+        try:
+            self.end_headers()
+            self.wfile.write(data)
+        except CLIENT_GONE:
+            # the panel stopped waiting (closed, reloaded or timed out): nothing to answer
+            self.close_connection = True
 
     def _error(self, status: int, code: str, message: str) -> None:
         self._json(status, {"error": {"code": code, "message": message}})
@@ -306,6 +312,27 @@ class BridgeHandler(BaseHTTPRequestHandler):
         self.wfile.write(data)
 
 
+# the other end closed the connection before the answer was written
+CLIENT_GONE = (ConnectionAbortedError, ConnectionResetError, BrokenPipeError)
+
+
+class BridgeServer(ThreadingHTTPServer):
+    daemon_threads = True
+    # On Windows SO_REUSEADDR lets a second bridge listen on the same port: requests then go to
+    # either process at random, including one that hangs. Take the port exclusively instead.
+    allow_reuse_address = sys.platform != "win32"
+
+    def server_bind(self) -> None:
+        if sys.platform == "win32" and hasattr(socket, "SO_EXCLUSIVEADDRUSE"):
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+    def handle_error(self, request, client_address) -> None:
+        if isinstance(sys.exc_info()[1], CLIENT_GONE):
+            return
+        super().handle_error(request, client_address)
+
+
 def make_server(
     manager: DeepSeekBrowserManager,
     host: str,
@@ -313,7 +340,7 @@ def make_server(
     pages_dir: Path = TEST_PAGES_DIR,
     chat: DeepSeekChat | None = None,
     lectures: LectureStore | None = None,
-) -> ThreadingHTTPServer:
+) -> BridgeServer:
     handler = type(
         "Handler",
         (BridgeHandler,),
@@ -324,6 +351,4 @@ def make_server(
             "lectures": lectures or LectureStore(NOTES_DIR),
         },
     )
-    server = ThreadingHTTPServer((host, port), handler)
-    server.daemon_threads = True
-    return server
+    return BridgeServer((host, port), handler)

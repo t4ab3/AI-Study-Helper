@@ -162,10 +162,24 @@ export function findNextCandidates(
 
 const FINISH_BUTTON_RE =
   /(заверш|закончи|отправить\s+(все|ответ|тест)|сдать|submit|finish|complete|end\s+test)/i;
+// Sends one answer and moves on to the next question, the test stays open: "Submit answer",
+// "Отправить ответ", "Submit and next". The whole label must be like that, so "Submit answer and
+// finish" still counts as finishing. Never found automatically; only a button the user taught.
+const ANSWER_SUBMIT_RE =
+  /^(submit|send|отправить|надіслати|підтвердити|подтвердить)(\s+(this|my|the|этот|свой|цей|свою))?(\s+(answer|response|ответ|відповідь))?(\s*(and|&|и|і|та|\+)\s*(next|continue|go\s+on|далее|дальше|продолжить|продовжити|далі))?\s*[.!›»→>]*$/i;
+
+const BARE_SUBMIT_RE = /^(submit|send|отправить|надіслати|підтвердити|подтвердить)\s*[.!›»→>]*$/i;
+
+export function isAnswerSubmitLabel(text: string): boolean {
+  const t = normalizeSpace(text);
+  // a bare "Submit" / "Отправить" is too often the whole test
+  return ANSWER_SUBMIT_RE.test(t) && !BARE_SUBMIT_RE.test(t);
+}
 
 export function isFinishLabel(text: string): boolean {
   const t = normalizeSpace(text);
-  return t.length > 0 && t.length < 60 && FINISH_BUTTON_RE.test(t);
+  if (BARE_SUBMIT_RE.test(t)) return true;
+  return t.length > 0 && t.length < 60 && FINISH_BUTTON_RE.test(t) && !isAnswerSubmitLabel(t);
 }
 
 /** Buttons that finish/submit the whole test. They are only reported, never pressed automatically. */

@@ -18,6 +18,15 @@ describe('recognizeDom', () => {
     expect(questions[2].options.every((o) => !!o.selector)).toBe(true);
   });
 
+  it('answer text in a block next to the radio\'s own wrapper (Testportal)', () => {
+    loadPage('answer-blocks.html');
+    const { questions } = recognizeAll();
+    expect(questions).toHaveLength(1);
+    expect(questions[0].type).toBe('single');
+    expect(questions[0].options.map((o) => o.text)).toEqual(['8 611 m', '8 848.86 m', '8 516 m']);
+    expect(questions[0].text).toBe('What is the current officially recognized elevation of Mount Everest?');
+  });
+
   it('multiple choice: fieldset legend and Moodle-style checkbox names', () => {
     loadPage('multiple.html');
     const { questions } = recognizeAll();

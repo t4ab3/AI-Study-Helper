@@ -3,7 +3,7 @@ import { loadPage, recognizeAll } from './helpers';
 import { validateAnswers } from '../src/shared/answers';
 import { buildFillPlan } from '../src/shared/plan';
 import { applyPlan, verifyPlan } from '../src/content/fill';
-import { clickNext, findNextCandidates, isNextLabel } from '../src/content/navigation';
+import { clickNext, findNextCandidates, isFinishLabel, isNextLabel } from '../src/content/navigation';
 
 function solve(answers: unknown[]) {
   const { questions } = recognizeAll();
@@ -131,6 +131,15 @@ describe('navigation', () => {
     expect(isNextLabel('Далее »')).toBe(true);
     expect(isNextLabel('Next')).toBe(true);
     expect(isNextLabel('Submit and next')).toBe(false);
+  });
+
+  it('"Submit answer" only sends one answer: it can be taught as "Next", finishing buttons cannot', () => {
+    for (const ok of ['Submit Answer', 'submit answer »', 'Submit my answer', 'Submit and next', 'Submit answer & continue', 'Отправить ответ', 'Надіслати відповідь', 'Подтвердить ответ'])
+      expect(isFinishLabel(ok), ok).toBe(false);
+    for (const fin of ['Submit', 'Отправить', 'Submit test', 'Submit all and finish', 'Submit answers', 'Submit answer and finish', 'Завершить тест', 'Отправить всё и завершить тест', 'Finish attempt', 'Complete quiz'])
+      expect(isFinishLabel(fin), fin).toBe(true);
+    // still never picked on its own
+    expect(isNextLabel('Submit Answer')).toBe(false);
   });
 
   it('refuses to click a button that is not a "next" button', () => {

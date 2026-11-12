@@ -207,11 +207,18 @@ function labelOf(el: HTMLElement, allControls: Set<Element>): LabelInfo {
   const after = normalizeSpace(parts.join(' '));
   if (after) return { text: after, nodes };
 
-  // The parent holds only this control plus text.
-  const parent = el.parentElement;
-  if (parent && Array.from(parent.querySelectorAll(CONTROL_SELECTOR)).every((c) => c === el)) {
-    const text = textOf(parent);
-    if (text) return { text, nodes: [parent] };
+  // The closest block that holds only this control plus text: the parent (<div><input> text</div>)
+  // or a few levels up, when the control sits in its own styling wrapper and the text in a
+  // neighbouring block (Testportal and other Material-style radios:
+  // <div class="answer"><div class="radio"><input></div><div class="answer_body">text</div></div>)
+  let anc = el.parentElement;
+  for (let i = 0; anc && i < 4 && anc !== doc.body; i++, anc = anc.parentElement) {
+    if (!Array.from(anc.querySelectorAll(CONTROL_SELECTOR)).every((c) => c === el)) break;
+    const text = textOf(anc);
+    if (text) {
+      if (text.length > 400) break;
+      return { text, nodes: [anc] };
+    }
   }
   const ph = el.getAttribute('placeholder') ?? el.getAttribute('title');
   if (ph) return { text: normalizeSpace(ph), nodes: [] };

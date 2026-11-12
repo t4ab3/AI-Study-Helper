@@ -32,4 +32,4 @@ PORT = int(os.environ.get("AITS_PORT", "8765"))
 CLIENT_HEADER = "X-AITS-Client"
 CLIENT_HEADER_VALUE = "ai-test-solver"
 
-VERSION = "2.1.0"
+VERSION = "2.2.1"

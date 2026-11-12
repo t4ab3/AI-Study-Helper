@@ -270,3 +270,48 @@ def test_test_pages_are_served_without_traversal(server):
     assert code == 200 and b"ok" in body
     code, _, _ = req(f"{server}/test-pages/..%2F..%2Fsecret.txt")
     assert code == 404
+
+
+def test_second_bridge_cannot_take_the_same_port():
+    # Windows lets two sockets share a port with SO_REUSEADDR: requests then went to a hung bridge
+    m = DeepSeekBrowserManager(driver_factory=lambda p: None)
+    first = make_server(m, "127.0.0.1", 0)
+    try:
+        with pytest.raises(OSError):
+            make_server(m, "127.0.0.1", first.server_address[1])
+    finally:
+        first.server_close()
+
+
+def test_logging_does_not_wait_for_a_frozen_console(monkeypatch, tmp_path):
+    """A click in the console window freezes its output; requests must not wait for it."""
+    import logging
+    import threading
+    import time
+
+    from deepseek_bridge import __main__ as entry
+
+    gate = threading.Event()
+
+    class FrozenStdout:
+        def write(self, s):
+            gate.wait(10)  # like a console with a text selection
+            return len(s)
+
+        def flush(self):
+            pass
+
+    root = logging.getLogger()
+    saved = root.handlers[:]
+    monkeypatch.setattr(entry, "LOG_DIR", tmp_path)
+    monkeypatch.setattr(entry.sys, "stdout", FrozenStdout())
+    try:
+        root.handlers = []
+        entry.setup_logging()
+        start = time.monotonic()
+        for i in range(50):
+            logging.getLogger("deepseek_bridge.server").info("request %s", i)
+        assert time.monotonic() - start < 1.0
+    finally:
+        gate.set()
+        root.handlers = saved

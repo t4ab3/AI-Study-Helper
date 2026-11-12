@@ -286,6 +286,110 @@ async function main() {
       await test.close();
     }
 
+    // ---------------- the same with keyboard shortcuts (sites that block the right-click menu) ----------------
+    console.log('\nShortcut test: question text with a key, "Next" with a key over the button, the key changed in the panel');
+    {
+      const { test, panel } = await openPanel(`${BASE}/teach-question.html`);
+      // the rule and the button from the previous block are remembered for this site: forget them
+      if (await panel.$('[data-testid=btn-forget-qrule]')) await panel.click('[data-testid=btn-forget-qrule]');
+      if (await panel.$('[data-testid=btn-forget-next]')) await panel.click('[data-testid=btn-forget-next]');
+      await panel.waitForFunction(() => /ищу сам/.test(document.querySelector('[data-testid=auto-qrule]')?.textContent ?? ''), null, { timeout: 5000 }).catch(() => undefined);
+      // change the question key from K to J in the panel
+      await panel.click('[data-testid=hotkeys-card] summary');
+      check((await panel.textContent('[data-testid=hotkey-question]')) === 'K' && (await panel.textContent('[data-testid=hotkey-next]')) === 'M', 'default keys are K and M');
+      await panel.click('[data-testid=hotkey-question]');
+      await panel.keyboard.press('j');
+      check((await panel.textContent('[data-testid=hotkey-question]')) === 'J', 'question key changed to J in the panel', await panel.textContent('[data-testid=hotkey-question]'));
+      await panel.click('[data-testid=hotkey-next]');
+      await panel.keyboard.press('j'); // already taken by the question
+      check(/занята/.test((await panel.textContent('[data-testid=hotkeys-card]')) ?? ''), 'the same key for both is refused');
+      await panel.keyboard.press('Escape');
+
+      await test.bringToFront();
+      // J without a selection is left to the site; typing J into an answer field does nothing either
+      await test.evaluate(() => {
+        const f = document.createElement('input');
+        f.id = 'typing';
+        document.body.prepend(f);
+      });
+      await test.evaluate(() => {
+        // a selection plus typing: still typing, the key must not teach anything
+        const r = document.createRange();
+        r.selectNodeContents(document.getElementById('qtext'));
+        getSelection().removeAllRanges();
+        getSelection().addRange(r);
+        document.getElementById('typing').focus();
+      });
+      await test.keyboard.press('j');
+      await test.evaluate(() => { document.getElementById('typing').remove(); getSelection().removeAllRanges(); });
+      await test.keyboard.press('j');
+      await test.waitForTimeout(500);
+      check(/ищу сам/.test(await panel.textContent('[data-testid=auto-qrule]')), 'no rule without a selection or while typing');
+      await test.evaluate(() => {
+        const r = document.createRange();
+        r.selectNodeContents(document.getElementById('qtext'));
+        getSelection().removeAllRanges();
+        getSelection().addRange(r);
+      });
+      await test.keyboard.press('j');
+      await panel.waitForFunction(() => /Столица Франции/.test(document.querySelector('[data-testid=auto-qrule]')?.textContent ?? ''), null, { timeout: 5000 }).catch(() => undefined);
+      check(/Столица Франции/.test(await panel.textContent('[data-testid=auto-qrule]')), 'question text taught with the key');
+
+      // a site that swallows keydown (like the scripts that block the right-click menu): the key
+      // is caught when it is released
+      await panel.click('[data-testid=btn-forget-qrule]');
+      await panel.waitForFunction(() => /ищу сам/.test(document.querySelector('[data-testid=auto-qrule]')?.textContent ?? ''), null, { timeout: 5000 }).catch(() => undefined);
+      await test.evaluate(() => {
+        const r = document.createRange();
+        r.selectNodeContents(document.getElementById('qtext'));
+        getSelection().removeAllRanges();
+        getSelection().addRange(r);
+        window.dispatchEvent(new KeyboardEvent('keyup', { code: 'KeyJ', key: 'j', bubbles: true }));
+      });
+      await panel.waitForFunction(() => /Столица Франции/.test(document.querySelector('[data-testid=auto-qrule]')?.textContent ?? ''), null, { timeout: 5000 }).catch(() => undefined);
+      check(/Столица Франции/.test(await panel.textContent('[data-testid=auto-qrule]')), 'question key works when the site swallows keydown');
+      await test.evaluate(() => getSelection().removeAllRanges());
+
+      // the keyboard focus stays in the panel (after a click there) while the mouse hovers the
+      // page's button: the panel passes M on to the page
+      await test.evaluate(() => document.dispatchEvent(new MouseEvent('mouseout', { bubbles: true, relatedTarget: null })));
+      await panel.click('[data-testid=auto-qrule]'); // focus in the panel
+      await panel.keyboard.press('m');
+      await panel.waitForFunction(() => /Наведите курсор/.test(document.querySelector('[data-testid=toast]')?.textContent ?? ''), null, { timeout: 5000 }).catch(() => undefined);
+      check(/Наведите курсор/.test((await panel.textContent('[data-testid=toast]').catch(() => '')) ?? '') && !/запомнена/.test(await panel.textContent('[data-testid=auto-next]')),
+        'M in the panel with the mouse off the page: a hint, nothing learned', await panel.textContent('[data-testid=toast]').catch(() => ''));
+      await test.hover('#next svg');
+      await panel.keyboard.press('m');
+      await panel.waitForFunction(() => /запомнена/.test(document.querySelector('[data-testid=auto-next]')?.textContent ?? ''), null, { timeout: 5000 }).catch(() => undefined);
+      check(/запомнена/.test(await panel.textContent('[data-testid=auto-next]')), '"Next" taught with M pressed while the panel had the focus');
+      await panel.click('[data-testid=btn-forget-next]');
+      await panel.waitForFunction(() => !/запомнена/.test(document.querySelector('[data-testid=auto-next]')?.textContent ?? ''), null, { timeout: 5000 }).catch(() => undefined);
+
+      await test.bringToFront();
+      await test.hover('#next svg');
+      await test.keyboard.press('m');
+      await panel.waitForFunction(() => /запомнена/.test(document.querySelector('[data-testid=auto-next]')?.textContent ?? ''), null, { timeout: 5000 }).catch(() => undefined);
+      check(/запомнена/.test(await panel.textContent('[data-testid=auto-next]')), '"Next" taught with the key over the button');
+      // the rule again, for the run below
+      await test.evaluate(() => {
+        const r = document.createRange();
+        r.selectNodeContents(document.getElementById('qtext'));
+        getSelection().removeAllRanges();
+        getSelection().addRange(r);
+      });
+      await test.keyboard.press('j');
+      await panel.waitForFunction(() => /Столица Франции/.test(document.querySelector('[data-testid=auto-qrule]')?.textContent ?? ''), null, { timeout: 5000 }).catch(() => undefined);
+      await test.evaluate(() => getSelection().removeAllRanges());
+
+      await panel.click('[data-testid=btn-auto-start]');
+      await waitPhase(panel, 'Тест заполнен', 120000);
+      check((await panel.textContent('[data-testid=auto-processed]')) === '3', 'test solved with what the keys taught', await autoMessage(panel));
+      // back to the default keys for the next runs
+      await panel.click('[data-testid=hotkeys-reset]');
+      await panel.close();
+      await test.close();
+    }
+
     // ---------------- page navigation (form submit) ----------------
     console.log('\nTwo-page test: 5 questions, "Следующая страница" (form submit), then 2 more');
     {

@@ -4,7 +4,9 @@ import type { LearnedNext, QuestionRule } from '../shared/types';
 import { clearLogs, errorMessage, log, readLogs, type LogEntry } from '../shared/logger';
 import { Banner } from './components';
 import { loadSession, patchSession, saveSession, type Session } from './session';
-import { isPinnedToTab, isRestrictedUrl, resolveTargetTab, sendToContent } from './tabs';
+import { HotkeysCard, useHotkeys } from './HotkeysCard';
+import { isTypingTarget, matchesHotkey } from '../shared/hotkeys';
+import { isPageGone, isPinnedToTab, isRestrictedUrl, resolveTargetTab, sendToContent } from './tabs';
 import { bridge, loadBridgePort, type BridgeStatus } from './bridge';
 import { AutoCard } from './AutoCard';
 import { AutoRunner, type AutoDeps, type AutoState } from './autoRunner';
@@ -112,6 +114,7 @@ export function App() {
       {/* both stay mounted: a test run or a recording keeps going while the other tab is open */}
       <div hidden={view !== 'tests'}>
         <TestsView bridgeOnline={bridgeOnline} flash={flash} />
+        <HotkeysCard />
       </div>
       <div hidden={view !== 'notes'}>
         <LectureCard bridgeOnline={bridgeOnline} flash={flash} />
@@ -166,6 +169,25 @@ function TestsView(props: { bridgeOnline: boolean | null; flash: (msg: string) =
   const [questionRule, setQuestionRule] = useState<QuestionRule | null>(null);
   // One automatic run at a time; it keeps working on its own tab even if another tab is shown.
   const runnerRef = useRef<{ tabId: number; runner: AutoRunner } | null>(null);
+
+  // K / M pressed while the panel has the keyboard focus (after a click on «Начать», for example):
+  // hovering the page's button does not move the focus there, so the panel passes the key on
+  const [hotkeys] = useHotkeys();
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if (!hotkeys.enabled || e.repeat || e.isComposing || e.defaultPrevented) return;
+      if (isTypingTarget(e.target instanceof Element ? e.target : null)) return;
+      const action = matchesHotkey(e, hotkeys.question) ? 'question' : matchesHotkey(e, hotkeys.next) ? 'next' : null;
+      const tabId = tabRef.current?.id;
+      if (!action || tabId === undefined) return;
+      e.preventDefault();
+      log('info', 'hotkey', `${action} из панели`);
+      // success and failure both come back as page events and show up as a toast
+      sendToContent(tabId, { kind: 'HOTKEY', action }).catch((err) => props.flash(errorMessage(err)));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [hotkeys, props.flash]);
 
   const refreshLearned = useCallback((tabId: number) => {
     sendToContent(tabId, { kind: 'NEXT_GET' })
@@ -263,7 +285,14 @@ function TestsView(props: { bridgeOnline: boolean | null; flash: (msg: string) =
       cancelAsk: () => bridge.cancel().then(() => undefined),
       fill: (plan) => sendToContent(runTab, { kind: 'FILL', plan }).then((r) => r.report),
       findNext: () => sendToContent(runTab, { kind: 'FIND_NEXT' }).then((r) => r.candidates),
-      clickNext: (selector) => sendToContent(runTab, { kind: 'CLICK_NEXT', selector }),
+      clickNext: (selector) =>
+        sendToContent(runTab, { kind: 'CLICK_NEXT', selector }).catch((e: unknown) => {
+          // the page started loading the next question before it could answer: the click worked.
+          // Not pressed again (that could skip a question); waiting for the new question checks it.
+          if (!isPageGone(e)) throw e;
+          log('warn', 'auto', `«Далее»: страница перезагрузилась, не ответив (${(e as Error).message})`);
+          return { ok: true, message: '' };
+        }),
       findFinish: () => sendToContent(runTab, { kind: 'FIND_FINISH' }).then((r) => r.candidates),
       async armLearnNext() {
         learnArmedAt = Date.now();
@@ -283,12 +312,19 @@ function TestsView(props: { bridgeOnline: boolean | null; flash: (msg: string) =
       now: () => Date.now(),
     };
     let lastLogged = 0;
+    let lastStep: string | null = null;
     const emit = (st: AutoState) => {
+      // everything goes to the log, so a stop can be traced afterwards
       for (const a of st.actions.slice(-3)) {
-        if (a.level !== 'info' && a.t > lastLogged) {
+        if (a.t > lastLogged) {
           log(a.level, 'auto', a.text);
           lastLogged = a.t;
         }
+      }
+      const stepKey = `${st.phase}/${st.step ?? '-'}`;
+      if (stepKey !== lastStep) {
+        lastStep = stepKey;
+        log('info', 'auto', `шаг: ${stepKey}`);
       }
       if (sRef.current?.tabId === runTab) update({ auto: st });
       else patchSession(runTab, { auto: st }).catch(() => undefined);

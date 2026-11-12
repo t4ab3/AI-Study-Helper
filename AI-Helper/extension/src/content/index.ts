@@ -17,6 +17,7 @@ import { uniqueSelector } from '../shared/selectors';
 import { normalizeSpace, recognizeDom } from './recognize';
 import { buildQuestionSelector, questionElementFromRange } from './questionRule';
 import { PageOverlay, siteKey } from './overlay';
+import { HOTKEYS_KEY, isTypingTarget, matchesHotkey, normalizeHotkeys, type Hotkeys } from '../shared/hotkeys';
 
 declare global {
   interface Window {
@@ -120,16 +121,19 @@ function init(): void {
     },
     true,
   );
-  async function teachNext(): Promise<{ ok: boolean; message: string; learned?: LearnedNext }> {
+  async function teachNext(
+    t: Element | null = menuTarget,
+    how: 'menu' | 'key' = 'menu',
+  ): Promise<{ ok: boolean; message: string; learned?: LearnedNext }> {
     const fail = (message: string) => {
       overlay.notice(message, true);
       send({ kind: 'NEXT_TEACH_FAILED', message });
       return { ok: false, message };
     };
-    const t = menuTarget;
-    if (!t || !t.isConnected || ignore(t)) return fail('Нажмите правой кнопкой прямо на кнопку «Далее» и выберите пункт ещё раз.');
+    const where = how === 'key' ? 'Наведите курсор прямо на кнопку «Далее» и нажмите клавишу ещё раз.' : 'Нажмите правой кнопкой прямо на кнопку «Далее» и выберите пункт ещё раз.';
+    if (!t || !t.isConnected || ignore(t)) return fail(where);
     const el = buttonFromTarget(t);
-    if (!el) return fail('Это похоже на вариант ответа или на текст, а не на кнопку. Нажмите правой кнопкой на саму кнопку «Далее».');
+    if (!el) return fail(`Это похоже на вариант ответа или на текст, а не на кнопку. ${where}`);
     const text = buttonLabel(el);
     if (isFinishLabel(text)) {
       send({ kind: 'NEXT_LEARN_REJECTED', text });
@@ -144,6 +148,81 @@ function init(): void {
     send({ kind: 'NEXT_LEARNED', learned });
     return { ok: true, message: 'Кнопка сохранена', learned };
   }
+  // ---------- keyboard shortcuts (for sites that block the right-click menu) ----------
+  let hotkeys: Hotkeys = normalizeHotkeys(null);
+  chrome.storage.local
+    .get(HOTKEYS_KEY)
+    .then((v) => (hotkeys = normalizeHotkeys(v[HOTKEYS_KEY])))
+    .catch(() => undefined);
+  chrome.storage.onChanged.addListener((changes, area) => {
+    if (area === 'local' && changes[HOTKEYS_KEY]) hotkeys = normalizeHotkeys(changes[HOTKEYS_KEY].newValue);
+  });
+  // the element under the mouse: the "Next" shortcut teaches that one
+  let pointer: { x: number; y: number; target: Element | null; inside: boolean } = { x: -1, y: -1, target: null, inside: false };
+  const onPointer = (e: PointerEvent | MouseEvent) => {
+    pointer = { x: e.clientX, y: e.clientY, target: e.target instanceof Element ? e.target : null, inside: true };
+  };
+  document.addEventListener('pointermove', onPointer, { capture: true, passive: true });
+  document.addEventListener('mouseover', onPointer, { capture: true, passive: true });
+  // the mouse went to the side panel or out of the window: nothing is hovered on the page
+  document.addEventListener(
+    'mouseout',
+    (e) => {
+      if (!e.relatedTarget) pointer.inside = false;
+    },
+    { capture: true, passive: true },
+  );
+  function hovered(): Element | null {
+    if (!pointer.inside) return null;
+    const at = pointer.x >= 0 ? document.elementFromPoint(pointer.x, pointer.y) : null;
+    return at && !ignore(at) ? at : pointer.target;
+  }
+  /** true when the key was ours */
+  function onHotkey(e: KeyboardEvent): boolean {
+    if (!hotkeys.enabled || e.isComposing) return false;
+    // typing an answer must stay typing
+    const active = document.activeElement;
+    if (isTypingTarget(e.target instanceof Element ? e.target : null) || isTypingTarget(active)) return false;
+    if (matchesHotkey(e, hotkeys.question)) {
+      // without a selection the key is left to the site (K pauses a YouTube video, for example)
+      if (!normalizeSpace(window.getSelection()?.toString() ?? '')) return false;
+      teachQuestion().catch(() => undefined);
+      return true;
+    }
+    if (matchesHotkey(e, hotkeys.next)) {
+      const t = hovered();
+      // nothing clickable under the mouse: not meant for us (M mutes a YouTube video, for example)
+      if (!t || ignore(t) || !buttonFromTarget(t)) return false;
+      teachNext(t, 'key').catch(() => undefined);
+      return true;
+    }
+    return false;
+  }
+  // Some sites swallow keydown (the same scripts that block the right-click menu). keyup is the
+  // fallback: a key whose keydown never reached us is handled when it is released.
+  const downSeen = new Set<string>();
+  window.addEventListener(
+    'keydown',
+    (e) => {
+      downSeen.add(e.code);
+      if (e.repeat) return;
+      if (onHotkey(e)) {
+        e.preventDefault();
+        e.stopPropagation();
+      }
+    },
+    true,
+  );
+  window.addEventListener(
+    'keyup',
+    (e) => {
+      if (downSeen.delete(e.code)) return;
+      if (onHotkey(e)) e.stopPropagation();
+    },
+    true,
+  );
+  window.addEventListener('blur', () => downSeen.clear());
+
   document.addEventListener('pointerdown', onLearnClick, true);
   document.addEventListener('click', onLearnClick, true);
 
@@ -202,7 +281,11 @@ function init(): void {
       case 'TEACH_QUESTION':
         return teachQuestion();
       case 'TEACH_NEXT':
-        return teachNext();
+        return teachNext(menuTarget, 'menu');
+      case 'HOTKEY':
+        // the key went to the side panel; the selection and the mouse are still on the page
+        if (msg.action === 'question') return teachQuestion();
+        return teachNext(hovered(), 'key');
       case 'QUESTION_RULE_GET':
         return { rule: await loadRule() };
       case 'QUESTION_RULE_FORGET':

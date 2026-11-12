@@ -291,7 +291,8 @@ class DeepSeekChat:
             box = self._first(drv, "input")
             self._type(drv, box, prompt)
             before = self._mark_existing(drv)
-            self._send(drv, box, before)
+            # a long text (lecture notes) can take DeepSeek a minute or two before the reply starts
+            self._send(drv, box, before, patience=30 if len(prompt) < 4000 else 150)
             log.info("prompt sent (%d chars), waiting for the reply", len(prompt))
             text = self._wait_reply(drv, before, started + timeout, settle)
             self.asked += 1
@@ -323,7 +324,7 @@ class DeepSeekChat:
         if len(drv.execute_script("return arguments[0].value", box) or "") < len(prompt) * 0.9:
             raise ChatError("ui_changed", "Не удалось вставить запрос в поле ввода DeepSeek.")
 
-    def _send(self, drv: Any, box: Any, before: dict) -> None:
+    def _send(self, drv: Any, box: Any, before: dict, patience: float = 30) -> None:
         from selenium.webdriver.common.keys import Keys
 
         box.send_keys(Keys.ENTER)
@@ -332,12 +333,14 @@ class DeepSeekChat:
         if not self._box_text(drv):
             # the field emptied, so the prompt went out: DeepSeek is just slow to start the reply.
             # Pressing "send" again here could send a second message.
-            if self._wait_new_message(drv, before, 30):
+            if self._wait_new_message(drv, before, patience):
                 return
             state = self._state(drv)
             if not state["ready"]:
                 raise ChatError(state["reason"], state["message"])
-            raise ChatError("send_failed", "Запрос отправлен, но ответ DeepSeek не появился на странице за 40 с.")
+            raise ChatError(
+                "send_failed", f"Запрос отправлен, но ответ DeepSeek не появился на странице за {int(patience + 8)} с."
+            )
         # Enter did not send: try the send button once.
         btn = self._first(drv, "send_button")
         if btn is not None:

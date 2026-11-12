@@ -2,6 +2,8 @@ import { useState } from 'react';
 import type { LearnedNext, QuestionRule } from '../shared/types';
 import type { AutoState } from './autoRunner';
 import { STEP_TEXT } from './autoRunner';
+import { hotkeyLabel } from '../shared/hotkeys';
+import { useHotkeys } from './HotkeysCard';
 
 const PHASE_TEXT: Record<AutoState['phase'], string> = {
   idle: 'Не запущено',
@@ -36,6 +38,7 @@ export function AutoCard(props: {
   onForgetQuestionRule: () => void;
 }) {
   const s = props.state;
+  const [hk] = useHotkeys();
   const [confirmFinish, setConfirmFinish] = useState<string | null>(null);
   const active = s.phase === 'running' || s.phase === 'waiting_user';
   const canStart = !active && s.phase !== 'paused';
@@ -88,7 +91,10 @@ export function AutoCard(props: {
               </button>
             </>
           ) : (
-            <span className="hint-inline">ищу сам; если не находит, выделите текст вопроса → правая кнопка → «AI Helper: это текст вопроса»</span>
+            <span className="hint-inline">
+              ищу сам; если не находит, выделите текст вопроса и нажмите {hotkeyLabel(hk.question)} (или правая кнопка → «AI Helper: это
+              текст вопроса»)
+            </span>
           )}
         </dd>
         <dt>«Далее»</dt>
@@ -101,7 +107,10 @@ export function AutoCard(props: {
               </button>
             </>
           ) : (
-            <span className="hint-inline">ищу сам; или правая кнопка на ней → «AI Helper: это кнопка «Далее»»</span>
+            <span className="hint-inline">
+              ищу сам; или наведите на неё курсор и нажмите {hotkeyLabel(hk.next)} (или правая кнопка → «AI Helper: это кнопка
+              «Далее»»)
+            </span>
           )}
         </dd>
       </dl>

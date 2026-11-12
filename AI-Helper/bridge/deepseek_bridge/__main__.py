@@ -5,14 +5,34 @@ from __future__ import annotations
 import argparse
 import atexit
 import logging
+import queue
 import signal
 import sys
-from logging.handlers import RotatingFileHandler
+from logging.handlers import QueueHandler, QueueListener, RotatingFileHandler
 
 from .browser_manager import BrowserManagerError, DeepSeekBrowserManager, find_chrome
 from .config import DEEPSEEK_URL, HOST, LOG_DIR, PORT, PROFILE_DIR, VERSION
 from .deepseek_chat import DeepSeekChat
 from .server import make_server
+
+
+def disable_quick_edit() -> None:
+    """A click in the Windows console window starts a text selection ("QuickEdit") and freezes
+    everything the process prints until the selection is cleared. The bridge then looked hung."""
+    if sys.platform != "win32":
+        return
+    try:
+        import ctypes
+
+        kernel32 = ctypes.windll.kernel32
+        handle = kernel32.GetStdHandle(-10)  # STD_INPUT_HANDLE
+        mode = ctypes.c_uint32()
+        if not kernel32.GetConsoleMode(handle, ctypes.byref(mode)):
+            return  # no console (output redirected, tests)
+        ENABLE_QUICK_EDIT_MODE, ENABLE_EXTENDED_FLAGS = 0x0040, 0x0080
+        kernel32.SetConsoleMode(handle, (mode.value & ~ENABLE_QUICK_EDIT_MODE) | ENABLE_EXTENDED_FLAGS)
+    except Exception:  # noqa: BLE001
+        pass
 
 
 def setup_logging() -> None:
@@ -22,10 +42,15 @@ def setup_logging() -> None:
     file_handler.setFormatter(fmt)
     console = logging.StreamHandler(sys.stdout)
     console.setFormatter(fmt)
+    # Request threads only put records into a queue; one background thread writes them.
+    # If the console window stops accepting output, logging waits there, not the whole bridge.
+    records: queue.SimpleQueue = queue.SimpleQueue()
+    listener = QueueListener(records, file_handler, console, respect_handler_level=True)
+    listener.start()
+    atexit.register(listener.stop)
     root = logging.getLogger()
     root.setLevel(logging.INFO)
-    root.addHandler(file_handler)
-    root.addHandler(console)
+    root.addHandler(QueueHandler(records))
     # Selenium is chatty at INFO
     logging.getLogger("selenium").setLevel(logging.WARNING)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
@@ -52,6 +77,7 @@ def main(argv: list[str] | None = None) -> int:
         print("Bridge слушает только локальный адрес.", file=sys.stderr)
         return 2
 
+    disable_quick_edit()
     setup_logging()
     log = logging.getLogger("deepseek_bridge")
     chrome = find_chrome()

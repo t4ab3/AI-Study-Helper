@@ -9,7 +9,7 @@ export interface LogEntry {
 }
 
 const KEY = 'logs';
-const MAX = 300;
+const MAX = 600;
 
 let queue: Promise<void> = Promise.resolve();
 

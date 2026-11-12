@@ -24,6 +24,8 @@ export type ContentRequest =
   /** From the context menu: the current selection is a question's text. */
   | { kind: 'TEACH_QUESTION' }
   | { kind: 'TEACH_NEXT' }
+  /** a shortcut pressed while the side panel had the keyboard focus */
+  | { kind: 'HOTKEY'; action: 'question' | 'next' }
   | { kind: 'QUESTION_RULE_GET' }
   | { kind: 'QUESTION_RULE_FORGET' }
   /** Sent only after the user confirmed finishing the test in the panel. */
@@ -45,6 +47,7 @@ export interface ContentResponses {
   NEXT_FORGET: { ok: true };
   TEACH_QUESTION: { ok: boolean; message: string; rule?: QuestionRule; matches?: number };
   TEACH_NEXT: { ok: boolean; message: string; learned?: LearnedNext };
+  HOTKEY: { ok: boolean; message: string };
   QUESTION_RULE_GET: { rule: QuestionRule | null };
   QUESTION_RULE_FORGET: { ok: true };
 }

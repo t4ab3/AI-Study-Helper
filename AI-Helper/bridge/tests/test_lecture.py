@@ -302,3 +302,28 @@ def test_long_lecture_parts_are_numbered_in_its_language():
     assert "(part 2 of 3)" in notes_prompt("en", "text", 2, 3)
     assert "(часть 1 из 2)" in notes_prompt("ru", "text", 1, 2)
     assert "частина" not in notes_prompt("uk", "text")
+
+
+def test_restart_mid_recording_recovers_lengths_and_audio(store):
+    import wave
+
+    lec = store.start_recording("Обрив 2")
+    lec.add_audio(tone(65))
+    assert wait_for(lambda: lec.transcribed_s > 0)
+    lec.stop()
+    assert wait_for(lambda: lec.state == "transcribed")
+    lec._worker.join(5)
+    # as if the bridge died mid-recording: meta.json says 0 s, the wav header says "no frames"
+    lec.state, lec.recorded_s, lec.transcribed_s = "recording", 0, 0
+    lec.save_meta()
+    with open(lec.folder / "audio.wav", "r+b") as f:
+        f.seek(4)
+        f.write((36).to_bytes(4, "little"))
+        f.seek(40)
+        f.write((0).to_bytes(4, "little"))
+    again = LectureStore(store.root, store.engine).get(lec.id)
+    assert again.state == "transcribed"
+    assert again.recorded_s == pytest.approx(65, abs=0.1)
+    assert again.transcribed_s > 20
+    with wave.open(str(again.folder / "audio.wav")) as w:
+        assert w.getnframes() / w.getframerate() == pytest.approx(65, abs=0.1)
