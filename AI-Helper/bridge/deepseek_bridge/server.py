@@ -9,6 +9,7 @@ Listens on 127.0.0.1 only. API:
   POST /deepseek/ask       -> {"prompt": "...", "new_chat": bool} -> {"text": reply}
   POST /deepseek/new_chat  -> start a fresh conversation
   POST /deepseek/cancel    -> abort the request that is waiting for a reply
+  POST /deepseek/signup    -> DeepSeek in an ordinary Chrome window, to sign up / sign in by hand
   GET  /test-pages/<file>  -> static local test pages (for trying the extension)
 
 Lecture notes:
@@ -135,7 +136,7 @@ class BridgeHandler(BaseHTTPRequestHandler):
             return
         self._error(HTTPStatus.NOT_FOUND, "not_found", "Нет такого адреса.")
 
-    POST_ROUTES = ("/open", "/close", "/deepseek/check", "/deepseek/ask", "/deepseek/new_chat", "/deepseek/cancel")
+    POST_ROUTES = ("/open", "/close", "/deepseek/check", "/deepseek/ask", "/deepseek/new_chat", "/deepseek/cancel", "/deepseek/signup")
     MAX_BODY = 256 * 1024
 
     def _read_json(self) -> dict:
@@ -179,6 +180,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
             elif path == "/deepseek/cancel":
                 self.chat.cancel()
                 self._json(HTTPStatus.OK, {"ok": True})
+            elif path == "/deepseek/signup":
+                self._json(HTTPStatus.OK, self.manager.open_signup())
             else:
                 prompt = body.get("prompt")
                 if not isinstance(prompt, str) or not prompt.strip():
@@ -193,6 +196,8 @@ class BridgeHandler(BaseHTTPRequestHandler):
                 "login_required": HTTPStatus.CONFLICT,
                 "captcha": HTTPStatus.CONFLICT,
                 "cancelled": HTTPStatus.CONFLICT,
+                "signup_window_open": HTTPStatus.CONFLICT,
+                "busy": HTTPStatus.CONFLICT,
                 "timeout": HTTPStatus.GATEWAY_TIMEOUT,
             }.get(e.code, HTTPStatus.SERVICE_UNAVAILABLE)
             log.warning("%s -> %s: %s", path, e.code, e.message)

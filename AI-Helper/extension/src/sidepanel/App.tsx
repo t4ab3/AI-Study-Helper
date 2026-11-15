@@ -5,6 +5,7 @@ import { clearLogs, errorMessage, log, readLogs, type LogEntry } from '../shared
 import { Banner } from './components';
 import { loadSession, patchSession, saveSession, type Session } from './session';
 import { HotkeysCard, useHotkeys } from './HotkeysCard';
+import { DeepSeekLoginCard } from './DeepSeekLoginCard';
 import { isTypingTarget, matchesHotkey } from '../shared/hotkeys';
 import { isPageGone, isPinnedToTab, isRestrictedUrl, resolveTargetTab, sendToContent } from './tabs';
 import { bridge, loadBridgePort, type BridgeStatus } from './bridge';
@@ -119,6 +120,11 @@ export function App() {
       <div hidden={view !== 'notes'}>
         <LectureCard bridgeOnline={bridgeOnline} flash={flash} />
       </div>
+      <DeepSeekLoginCard
+        bridgeOnline={bridgeOnline}
+        signupOpen={bridgeState.kind === 'on' && !!bridgeState.status.signup_open}
+        flash={flash}
+      />
 
       <details className="logs" open={logsOpen} onToggle={(e) => setLogsOpen((e.target as HTMLDetailsElement).open)}>
         <summary>Журнал</summary>

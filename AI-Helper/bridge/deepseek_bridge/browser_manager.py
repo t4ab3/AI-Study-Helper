@@ -4,6 +4,10 @@ Opens https://chat.deepseek.com/ in a separate Chrome window driven by Selenium,
 dedicated persistent profile directory inside the project. The user logs in manually once;
 the session is kept in that profile.
 
+For signing up or signing in for the first time there is also a plain Chrome window on the same
+profile (open_signup): no Selenium, no debugging port, an ordinary browser. The user goes through
+DeepSeek's checks there by hand; the login stays in the profile for the Selenium window.
+
 What this module deliberately does NOT do: it never types into DeepSeek, never sends
 messages and never reads the chat DOM. The only things it inspects are the window handles
 and the current URL, to know whether the window is alive and on DeepSeek.
@@ -15,6 +19,8 @@ import logging
 import os
 import shutil
 import socket
+import subprocess
+import time
 import threading
 import urllib.request
 from pathlib import Path
@@ -198,10 +204,16 @@ class DeepSeekBrowserManager:
         profile_dir: Path = PROFILE_DIR,
         url: str = DEEPSEEK_URL,
         driver_factory: DriverFactory = default_driver_factory,
+        launcher: Callable[[list], Any] = subprocess.Popen,
+        chrome_finder: Callable[[], Optional[str]] = find_chrome,
     ):
         self.profile_dir = Path(profile_dir)
         self.url = url
         self._factory = driver_factory
+        self._launch = launcher
+        self._find_chrome = chrome_finder
+        # the plain Chrome window for signing up (a Popen), while it is open
+        self._signup: Any = None
         self._driver: Any = None
         self._lock = threading.RLock()
         self.last_error: Optional[str] = None
@@ -252,6 +264,69 @@ class DeepSeekBrowserManager:
                 continue
         return None
 
+    def signup_open(self) -> bool:
+        """True while the plain Chrome window for signing up is still open."""
+        p = self._signup
+        if p is None:
+            return False
+        try:
+            if p.poll() is None:
+                return True
+        except Exception:  # noqa: BLE001
+            pass
+        self._signup = None
+        log.info("sign-up window closed")
+        return False
+
+    def _refuse_while_signup(self) -> None:
+        if self.signup_open():
+            raise BrowserManagerError(
+                "signup_window_open",
+                "Открыто окно DeepSeek для входа или регистрации. Закончите вход и закройте это окно: "
+                "после этого программа сама откроет DeepSeek и продолжит.",
+            )
+
+    def open_signup(self, wait_closed: float = 10.0) -> dict:
+        """Opens DeepSeek in an ordinary Chrome window on the program's profile, for signing up or
+        signing in by hand. The Selenium window, if open, is closed first: one profile can only be
+        used by one Chrome."""
+        if self.signup_open():
+            return {"action": "already_open"}
+        if not self._lock.acquire(timeout=3):
+            raise BrowserManagerError(
+                "busy", "DeepSeek сейчас отвечает на запрос. Остановите решение или дождитесь ответа и нажмите ещё раз."
+            )
+        try:
+            chrome = self._find_chrome()
+            if not chrome:
+                raise BrowserManagerError("chrome_not_found", "Google Chrome не найден.")
+            had = self._driver is not None
+            self._drop_driver()
+            if had:
+                log.info("Selenium window closed for the sign-up window")
+            # the closed Chrome needs a moment to let go of the profile
+            deadline = time.monotonic() + wait_closed
+            while running_chrome_address(self.profile_dir, timeout=0.3) and time.monotonic() < deadline:
+                time.sleep(0.3)
+            self.profile_dir.mkdir(parents=True, exist_ok=True)
+            args = [
+                chrome,
+                f"--user-data-dir={self.profile_dir}",
+                "--profile-directory=Default",
+                "--no-first-run",
+                "--no-default-browser-check",
+                "--new-window",
+                self.url,
+            ]
+            try:
+                self._signup = self._launch(args)
+            except OSError as e:
+                raise BrowserManagerError("chrome_not_found", f"Chrome не запустился: {e}") from e
+            log.info("sign-up window opened (plain Chrome, profile %s)", self.profile_dir)
+            return {"action": "opened"}
+        finally:
+            self._lock.release()
+
     def status(self, wait: float = 0.5) -> dict:
         # A chat request can hold the lock for minutes: report "busy" instead of blocking.
         if not self._lock.acquire(timeout=wait):
@@ -262,6 +337,7 @@ class DeepSeekBrowserManager:
                 "url": None,
                 "profile_dir": str(self.profile_dir),
                 "last_error": self.last_error,
+                "signup_open": self.signup_open(),
             }
         try:
             return self._status_locked()
@@ -288,6 +364,7 @@ class DeepSeekBrowserManager:
             "url": url,
             "profile_dir": str(self.profile_dir),
             "last_error": self.last_error,
+            "signup_open": self.signup_open(),
         }
 
     @property
@@ -296,6 +373,7 @@ class DeepSeekBrowserManager:
 
     def driver(self) -> Any:
         """Live driver switched to the DeepSeek tab, opening the window if needed. Call under `lock`."""
+        self._refuse_while_signup()
         if not self._alive() or self._deepseek_handle() is None:
             self.open()
         self._deepseek_handle()
@@ -320,6 +398,7 @@ class DeepSeekBrowserManager:
     def open(self) -> dict:
         """Opens the DeepSeek window, or focuses it if it already exists. Never opens a duplicate."""
         with self._lock:
+            self._refuse_while_signup()
             self.last_error = None
             if self._alive():
                 try:

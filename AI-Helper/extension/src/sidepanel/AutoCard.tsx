@@ -20,6 +20,7 @@ const DS_TEXT: Record<AutoState['deepseek'], string> = {
   ready: 'Подключён',
   login_required: 'Нужен вход',
   captcha: 'Проверка (CAPTCHA)',
+  signup_window_open: 'Открыто окно входа',
   ui_changed: 'Интерфейс не распознан',
   offline: 'Bridge не запущен',
 };

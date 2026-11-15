@@ -51,7 +51,7 @@ interface SiteOpts {
   stuck?: boolean;
   /** no "Next" button: the next question appears on the same page after answering */
   reveal?: boolean;
-  checks?: DeepSeekCheck[];
+  checks?: (DeepSeekCheck | Error)[];
   replies?: ((prompt: string) => string | Error)[];
 }
 
@@ -78,7 +78,9 @@ function makeSite(pages: Question[][], o: SiteOpts = {}) {
       return { mode: 'dom', questions: pages[idx] ?? [], rawText: '', warnings: [] };
     },
     async checkDeepSeek() {
-      return checks.shift() ?? { ready: true, reason: null, message: 'ok' };
+      const c = checks.shift();
+      if (c instanceof Error) throw c;
+      return c ?? { ready: true, reason: null, message: 'ok' };
     },
     async ask(prompt, newChat) {
       log.asks.push(prompt);
@@ -200,6 +202,15 @@ describe('AutoRunner', () => {
     const { runner, states } = await runToEnd(deps);
     expect(states.some((s) => s.phase === 'waiting_user' && s.deepseek === 'login_required')).toBe(true);
     expect(runner.state.phase).toBe('finished');
+  });
+
+  it('waits while the ordinary sign-up window is open, then continues', async () => {
+    const busy = codeError('signup_window_open', 'Открыто окно DeepSeek для входа или регистрации.');
+    const { deps, log } = makeSite([SEQ[0]], { checks: [busy, busy, busy] });
+    const { runner, states } = await runToEnd(deps);
+    expect(states.some((s) => s.phase === 'waiting_user' && s.deepseek === 'signup_window_open')).toBe(true);
+    expect(runner.state.phase).toBe('finished');
+    expect(log.asks.length).toBeGreaterThan(0);
   });
 
   it('reports a changed DeepSeek interface instead of working around it', async () => {

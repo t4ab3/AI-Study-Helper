@@ -315,3 +315,67 @@ def test_logging_does_not_wait_for_a_frozen_console(monkeypatch, tmp_path):
     finally:
         gate.set()
         root.handlers = saved
+
+
+class FakeProc:
+    def __init__(self, args):
+        self.args = args
+        self.code = None
+
+    def poll(self):
+        return self.code
+
+
+def test_signup_window_is_plain_chrome_and_blocks_selenium_until_closed(tmp_path):
+    created, launched = [], []
+
+    def factory(p):
+        d = FakeDriver()
+        created.append(d)
+        return d
+
+    def launcher(args):
+        launched.append(FakeProc(args))
+        return launched[-1]
+
+    m = DeepSeekBrowserManager(profile_dir=tmp_path, driver_factory=factory, launcher=launcher, chrome_finder=lambda: "chrome.exe")
+    m.open()
+    assert m.open_signup() == {"action": "opened"}
+    # the Selenium window is closed first: one profile, one Chrome
+    assert created[0].quit_called
+    args = launched[0].args
+    assert args[0] == "chrome.exe" and f"--user-data-dir={tmp_path}" in args and args[-1] == m.url
+    # an ordinary browser: no automation, no debugging port
+    assert not any("remote-debugging" in a or "automation" in a for a in args)
+    assert m.status()["signup_open"] is True
+    assert m.open_signup() == {"action": "already_open"}
+    assert len(launched) == 1
+    with pytest.raises(BrowserManagerError) as e:
+        m.open()
+    assert e.value.code == "signup_window_open"
+    with pytest.raises(BrowserManagerError):
+        m.driver()
+    # the user closed the window: the program's window opens again
+    launched[0].code = 0
+    assert m.status()["signup_open"] is False
+    assert m.open()["action"] == "opened"
+    assert len(created) == 2
+
+
+def test_signup_via_http(tmp_path):
+    launched = []
+    m = DeepSeekBrowserManager(
+        profile_dir=tmp_path, driver_factory=lambda p: FakeDriver(), launcher=lambda a: launched.append(FakeProc(a)) or launched[-1], chrome_finder=lambda: "chrome.exe"
+    )
+    srv = make_server(m, "127.0.0.1", 0)
+    t = threading.Thread(target=srv.serve_forever, daemon=True)
+    t.start()
+    base = f"http://127.0.0.1:{srv.server_address[1]}"
+    try:
+        code, _, body = req(f"{base}/deepseek/signup", "POST", EXT)
+        assert code == 200 and body == {"action": "opened"}
+        code, _, body = req(f"{base}/open", "POST", EXT)
+        assert code == 409 and body["error"]["code"] == "signup_window_open"
+    finally:
+        srv.shutdown()
+        srv.server_close()

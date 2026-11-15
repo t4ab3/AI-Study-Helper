@@ -26,6 +26,8 @@ export interface BridgeStatus {
   url: string | null;
   profile_dir: string;
   last_error: string | null;
+  /** the ordinary Chrome window for signing up / signing in is open */
+  signup_open?: boolean;
 }
 
 export interface OpenResult {
@@ -86,6 +88,8 @@ export const bridge = {
   open: () => call<OpenResult>('/open', 'POST', 120_000),
   close: () => call<{ closed: boolean }>('/close', 'POST', 15_000),
   /** Opens the window if needed and reports whether the chat can be used (logged in, no CAPTCHA). */
+  /** DeepSeek in an ordinary Chrome window on the program's profile, to sign up or sign in by hand. */
+  signup: () => call<{ action: 'opened' | 'already_open' }>('/deepseek/signup', 'POST', 30_000, {}),
   check: () =>
     call<{ ready: boolean; logged_in: boolean; reason: string | null; message: string }>('/deepseek/check', 'POST', 120_000, {}),
   /** Types the prompt into DeepSeek, sends it and returns the finished reply. */

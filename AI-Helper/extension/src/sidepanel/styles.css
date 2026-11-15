@@ -154,3 +154,7 @@ details.hotkeys[open] summary { color: var(--text); }
 .key-btn { min-width: 64px; font-family: ui-monospace, Consolas, monospace; font-weight: 600; }
 .key-btn.recording { border-color: var(--accent); color: var(--accent); }
 .key-error { color: var(--err); font-size: 11px; }
+
+/* sign-in / sign-up to DeepSeek in an ordinary window */
+.card.signup .row { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; }
+.signup-title { font-size: 13px; }

@@ -20,7 +20,7 @@ import { fingerprint, renumber } from '../shared/fingerprint';
 
 export type AutoPhase = 'idle' | 'running' | 'paused' | 'waiting_user' | 'finished' | 'error' | 'stopped';
 export type AutoStep = 'connect' | 'read' | 'send' | 'wait' | 'process' | 'fill' | 'next';
-export type DeepSeekState = 'unknown' | 'ready' | 'login_required' | 'captcha' | 'ui_changed' | 'offline';
+export type DeepSeekState = 'unknown' | 'ready' | 'login_required' | 'captcha' | 'signup_window_open' | 'ui_changed' | 'offline';
 
 export interface AutoAction {
   t: number;
@@ -137,7 +137,8 @@ function errCode(e: unknown): string {
 }
 
 const TRANSIENT = new Set(['timeout', 'busy', 'empty_answer', 'send_failed', 'http_error', 'internal_error', 'webdriver_error']);
-const WAIT_FOR_USER = new Set(['login_required', 'captcha']);
+// signup_window_open: the ordinary Chrome window for signing up is open; the program's window waits for it to close
+const WAIT_FOR_USER = new Set(['login_required', 'captcha', 'signup_window_open']);
 
 export class AutoRunner {
   private stopReq = false;
@@ -334,6 +335,8 @@ export class AutoRunner {
     try {
       st = await this.deps.checkDeepSeek();
     } catch (e) {
+      const code = errCode(e);
+      if (WAIT_FOR_USER.has(code)) return this.waitForUser({ ready: false, reason: code, message: (e as Error).message });
       this.set({ deepseek: 'offline' });
       throw new Fatal(e instanceof Error ? e.message : String(e));
     }
