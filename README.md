@@ -1,36 +1,55 @@
 # AI Helper
 
-Расширение для Google Chrome с небольшой программой-помощником на Python. Работает через обычный сайт DeepSeek под вашим аккаунтом, без платных API и ключей.
+AI Helper — расширение для Chrome и программа для Windows, которые работают через ваш собственный аккаунт DeepSeek на сайте chat.deepseek.com. Без API-ключей и платных токенов. Речь в текст переводит Whisper прямо на вашем компьютере, звук никуда не отправляется.
 
 ## Что умеет
 
-**Тесты**
-- Само проходит тест на сайте: читает вопрос, спрашивает DeepSeek, отмечает ответ и нажимает «Далее».
-- Понимает разные типы вопросов: один или несколько вариантов, выпадающие списки, текстовые поля, «верно/неверно», сопоставление. Справляется и с нестандартной разметкой вариантов, как на Testportal.
-- Если программа взяла не тот текст вопроса или не нашла кнопку перехода, ей можно один раз подсказать. Подсказать можно правой кнопкой мыши, а на сайтах, где правая кнопка запрещена, горячими клавишами: K для текста вопроса и M для кнопки под курсором. Клавиши меняются в настройках.
-- Кнопку, которая отправляет один ответ и переходит дальше («Submit Answer»), тоже можно запомнить.
-- Наугад ответ не выбирается. Тест целиком отправляется только после вашего подтверждения.
+**Тесты.** Расширение само проходит тест на странице: читает вопрос и варианты, спрашивает DeepSeek, выбирает ответ и переходит к следующему вопросу. Работает с одиночным и множественным выбором, «верно/неверно» и вводом текста. Окончательную кнопку «Завершить тест» без вашего подтверждения не нажимает. Если DeepSeek не ответил, программа ждёт, а не выбирает наугад.
 
-**Конспекты лекций**
-- Записывает звук лекции из вкладки браузера (Meet, YouTube, сайт вуза) или со всего компьютера (Zoom, Teams).
-- Прямо во время записи переводит речь в текст. Распознавание работает на вашем компьютере, звук никуда не отправляется.
-- Лекция может быть на украинском, русском или английском: язык выбирается в списке.
-- После лекции DeepSeek делает из текста подробный конспект, и он открывается в Word.
-- Вместо записи можно загрузить готовый аудио- или видеофайл.
+**Конспекты лекций.** Записывает звук лекции из вкладки или со всего компьютера и прямо во время записи переводит речь в текст. Потом DeepSeek делает из текста конспект, и он сохраняется в Word.
+
+**Живой суфлёр (AI Helper Live).** Отдельная программа для созвонов, интервью и выступлений. Она слушает собеседника через звук компьютера и вас через микрофон, а после каждой фразы собеседника показывает готовую реплику в 2–3 предложения. Кнопка «Подробнее» или Ctrl+Alt+D разворачивает ответ.
+- Окно полупрозрачное, всегда поверх других и скрыто от демонстрации экрана в Zoom, Teams, Meet и OBS.
+- При запуске суфлёр сам поднимает bridge и сразу открывает DeepSeek, первую подсказку ждать не нужно.
+- В настройках можно вписать тему разговора, например «физика» или «веб-технологии», и подсказки будут учитывать её.
+- Языки: украинский, русский, английский.
 
 ## Быстрый старт
 
-Нужны Windows 10/11 и Google Chrome. Python и Node.js ставить не нужно.
+1. Скачайте проект и дважды щёлкните `install.bat`. Он сам скачает Python и Node.js, если их нет, соберёт расширение, поставит библиотеки и создаст ярлыки на рабочем столе. Права администратора не нужны.
+2. В открывшемся `chrome://extensions` включите «Режим разработчика», нажмите «Загрузить распакованное» и выберите папку `extension\dist`.
+3. Запустите ярлык **AI Helper (bridge)** и один раз войдите в DeepSeek. Если при регистрации мешает проверка, нажмите кнопку «Открыть для входа или регистрации».
+4. Для тестов и конспектов нажмите на иконку расширения. Для разговоров запустите ярлык **AI Helper Live**.
 
-1. Скачайте проект: **Code → Download ZIP** — и распакуйте его.
-2. Дважды щёлкните **install.bat**. Он сам скачает всё нужное, соберёт расширение и создаст ярлык на рабочем столе (5–20 минут).
-3. В конце откроется `chrome://extensions`: включите **Режим разработчика**, нажмите **Загрузить распакованное расширение** и вставьте путь (Ctrl+V, он уже скопирован).
-4. Запускайте программу ярлыком **AI Helper (bridge)** и нажмите на значок AI Helper в Chrome. При первом решении теста войдите в DeepSeek в открывшемся окне.
+## Подробная инструкция
 
-Для пробы есть учебные тесты: `http://127.0.0.1:8765/test-pages/` (адрес открывается, когда запущен bridge).
+В [docs/Инструкция AI Helper.docx](docs/Инструкция%20AI%20Helper.docx) лежит полная пошаговая инструкция для обычного пользователя, со скриншотами, от установки до работы. В ней каждый режим, все настройки и таблица «что делать, если не работает».
 
-## Полная инструкция
+------------------------------------------------------------------------------------------------------------------------
 
-Пошаговое описание установки, всех функций, настроек и решения проблем лежит в файле **[docs/Инструкция AI Helper.docx](docs/Инструкция%20AI%20Helper.docx)**. Техническое описание — в [README.md](README.md).
+# AI Helper
 
-> Пользуйтесь честно: на многих курсах и экзаменах помощь ИИ запрещена правилами.
+AI Helper is a Chrome extension and a Windows app that work through your own DeepSeek account on chat.deepseek.com. No API keys or paid tokens. Speech is turned into text by Whisper on your own computer, so audio never leaves it.
+
+## Features
+
+**Tests.** The extension works through a test on the page by itself: it reads the question and options, asks DeepSeek, picks the answer and moves to the next question. It handles single and multiple choice, true/false and text input. It never presses the final "Finish test" button without your confirmation. If DeepSeek doesn't answer, it waits instead of guessing.
+
+**Lecture notes.** Records lecture audio from a tab or the whole computer and transcribes it live. DeepSeek then turns the transcript into structured notes, saved as a Word file.
+
+**Live assistant (AI Helper Live).** A separate app for calls, interviews and talks. It listens to the other person through your computer's audio and to you through the microphone. After each phrase from the other person it shows a ready reply of 2–3 sentences. "More" or Ctrl+Alt+D expands the answer.
+- The window is translucent, always on top and hidden from screen sharing in Zoom, Teams, Meet and OBS.
+- On launch it starts the bridge by itself and opens DeepSeek right away, so the first hint doesn't have to wait.
+- You can type the topic of the conversation in the settings, for example "physics" or "web technologies", and the hints take it into account.
+- Languages: Ukrainian, Russian, English.
+
+## Quick start
+
+1. Download the project and double-click `install.bat`. It downloads Python and Node.js if they're missing, builds the extension, installs the libraries and creates desktop shortcuts. No admin rights needed.
+2. In the `chrome://extensions` page it opens, turn on "Developer mode", click "Load unpacked" and choose the `extension\dist` folder.
+3. Start the **AI Helper (bridge)** shortcut and sign in to DeepSeek once. If a check blocks sign-up, use the "Open for sign-in or sign-up" button.
+4. For tests and lecture notes, click the extension icon. For conversations, start the **AI Helper Live** shortcut.
+
+## Full guide
+
+[docs/Инструкция AI Helper.docx](docs/Инструкция%20AI%20Helper.docx) is a complete step-by-step guide for non-technical users, with screenshots, from installation to everyday use. It covers every mode, all settings and a troubleshooting table. The guide is in Russian.
